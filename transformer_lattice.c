@@ -242,6 +242,41 @@ void lattice_forward(Lattice *L,Tensor *X){
     for(int l=0;l<L->n_layers;l++) block_forward(&L->layers[l],X);
 }
 
+/* ----------- 8. C API function for integration ----------- */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*
+ * Run the transformer lattice in-place on a flat float array of size seq_len*d_model.
+ * Arguments:
+ *   seq_len   – sequence length (rows)
+ *   d_model   – embedding dimension (cols) (must be divisible by n_heads)
+ *   n_heads   – number of attention heads
+ *   d_ff      – feed-forward dimension (hidden size)
+ *   n_layers  – how many transformer blocks to stack
+ *   data      – pointer to float array (row-major, length seq_len*d_model)
+ */
+void lattice_forward_api(int seq_len,int d_model,int n_heads,int d_ff,int n_layers,float *data){
+    /* copy data into tensor */
+    Tensor X=new_tensor(seq_len,d_model);
+    memcpy(X.d,data,sizeof(float)*seq_len*d_model);
+
+    /* build network */
+    Lattice net=new_lattice(n_layers,n_heads,d_model,d_ff);
+    lattice_forward(&net,&X);
+
+    /* copy back */
+    memcpy(data,X.d,sizeof(float)*seq_len*d_model);
+
+    /* cleanup tensor memory (net cleanup omitted for brevity) */
+    free_tensor(&X);
+}
+
+#ifdef __cplusplus
+}
+#endif
+
 /* ---------- 7. Demo main ---------- */
 int main(){
     srand(42);
