@@ -136,6 +136,11 @@ if __name__ == "__main__":
         exit(1)
     
     print("🚀 Starting Pandora Transformer API...")
-    print("📚 Visit http://localhost:8000/docs for interactive documentation")
+    print("📚 API Documentation will be available at /docs")
+    print("🌐 Deploy this to your own domain - NOT OpenAI's platform!")
     
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Get port from environment (for cloud deployment) or default to 8000
+    port = int(os.environ.get("PORT", 8000))
+    
+    # host="0.0.0.0" allows external connections (required for cloud deployment)
+    uvicorn.run(app, host="0.0.0.0", port=port)
