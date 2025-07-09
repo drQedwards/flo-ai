@@ -1,225 +1,202 @@
-
 <!DOCTYPE html>
-<html lang="en-US">
-  <head>
-    <meta name="google-site-verification" content="prudJAvbKSwiO0B30AJ4EBpo5TBw12AKTkjfIlYKrs8" />
+<html lang="en">
+<head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FreeZon - Everything Free Store</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-top">
+            <div class="logo">
+                <i class="fab fa-amazon"></i>
+                <span>FreeZon</span>
+            </div>
+            
+            <div class="search-bar">
+                <select class="search-category">
+                    <option value="all">All</option>
+                    <option value="electronics">Electronics</option>
+                    <option value="books">Books</option>
+                    <option value="clothing">Clothing</option>
+                    <option value="home">Home & Garden</option>
+                </select>
+                <input type="text" placeholder="Search FreeZon" id="searchInput">
+                <button class="search-btn"><i class="fas fa-search"></i></button>
+            </div>
 
-<!-- Begin Jekyll SEO tag v2.8.0 -->
-<title>flo-ai | 🔥🔥🔥 Simple way to create composable AI agents</title>
-<meta name="generator" content="Jekyll v3.10.0" />
-<meta property="og:title" content="flo-ai" />
-<meta property="og:locale" content="en_US" />
-<meta name="description" content="🔥🔥🔥 Simple way to create composable AI agents" />
-<meta property="og:description" content="🔥🔥🔥 Simple way to create composable AI agents" />
-<link rel="canonical" href="https://rootflo.github.io/flo-ai/" />
-<meta property="og:url" content="https://rootflo.github.io/flo-ai/" />
-<meta property="og:site_name" content="flo-ai" />
-<meta property="og:type" content="website" />
-<meta name="twitter:card" content="summary" />
-<meta property="twitter:title" content="flo-ai" />
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebSite","description":"🔥🔥🔥 Simple way to create composable AI agents","headline":"flo-ai","name":"flo-ai","url":"https://rootflo.github.io/flo-ai/"}</script>
-<!-- End Jekyll SEO tag -->
+            <div class="header-actions">
+                <div class="account">
+                    <span class="small-text">Hello, Sign in</span>
+                    <span class="bold-text">Account & Lists</span>
+                </div>
+                <div class="orders">
+                    <span class="small-text">Returns</span>
+                    <span class="bold-text">& Orders</span>
+                </div>
+                <div class="cart" onclick="toggleCart()">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count" id="cartCount">0</span>
+                    <span>Cart</span>
+                </div>
+            </div>
+        </div>
 
-    <link rel="stylesheet" href="/flo-ai/assets/css/style.css?v=826032176717d70098ac1c76ba74b4c8a6f9f498">
-    <!-- start custom head snippets, customize with your own _includes/head-custom.html file -->
+        <nav class="navbar">
+            <ul>
+                <li><a href="#" onclick="filterProducts('all')"><i class="fas fa-bars"></i> All</a></li>
+                <li><a href="#" onclick="filterProducts('electronics')">Electronics</a></li>
+                <li><a href="#" onclick="filterProducts('books')">Books</a></li>
+                <li><a href="#" onclick="filterProducts('clothing')">Clothing</a></li>
+                <li><a href="#" onclick="filterProducts('home')">Home & Garden</a></li>
+                <li><a href="#" onclick="filterProducts('sports')">Sports</a></li>
+                <li><a href="#" onclick="filterProducts('toys')">Toys & Games</a></li>
+            </ul>
+        </nav>
+    </header>
 
-<!-- Setup Google Analytics -->
+    <!-- Hero Banner -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Everything is FREE at FreeZon!</h1>
+            <p>Browse millions of products and get them all for free at checkout</p>
+            <button class="cta-button" onclick="scrollToProducts()">Start Shopping</button>
+        </div>
+    </section>
 
+    <!-- Products Section -->
+    <main class="main-content">
+        <div class="container">
+            <h2>Featured Products</h2>
+            
+            <div class="filters">
+                <select id="sortBy" onchange="sortProducts()">
+                    <option value="featured">Featured</option>
+                    <option value="price-low">Price: Low to High</option>
+                    <option value="price-high">Price: High to Low</option>
+                    <option value="rating">Customer Rating</option>
+                </select>
+            </div>
 
+            <div class="products-grid" id="productsGrid">
+                <!-- Products will be dynamically loaded here -->
+            </div>
+        </div>
+    </main>
 
-<!-- You can set your favicon here -->
-<!-- link rel="shortcut icon" type="image/x-icon" href="/flo-ai/favicon.ico" -->
-
-<!-- end custom head snippets -->
-
-  </head>
-  <body>
-    <div class="container-lg px-3 my-5 markdown-body">
-      
-      <h1><a href="https://rootflo.github.io/flo-ai/">flo-ai</a></h1>
-      
-
-      <p align="center">
-  <img src="./images/rootflo-logo.png" alt="Rootflo" width="150" />
-</p>
-
-<h1 align="center">Composable AI Agentic Workflow</h1>
-
-<p align="center">
-Rootflo is an alternative to <b>Langgraph</b>, and  <b>CrewAI</b>. It lets you easily build composable agentic workflows from using simple components to any size, unlocking the full potential of LLMs.
-</p>
-
-<p align="center">
-  <a href="https://github.com/rootflo/flo-ai/stargazers"><img src="https://img.shields.io/github/stars/rootflo/flo-ai?style=for-the-badge" alt="GitHub stars" /></a>
-  <a href="https://github.com/rootflo/flo-ai/releases">
-    <img src="https://img.shields.io/github/v/release/rootflo/flo-ai?display_name=release&amp;style=for-the-badge" alt="GitHub release (latest)" />
-  </a>
-  <a href="https://github.com/rootflo/flo-ai/graphs/commit-activity"><img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/rootflo/flo-ai/develop?style=for-the-badge" />
-  </a>
-  <a href="https://github.com/rootflo/flo-ai/blob/develop/LICENSE"><img src="https://img.shields.io/github/license/rootflo/flo-ai?style=for-the-badge" alt="License" />
-  </a>
-  <br />
-</p>
-
-<p align="center">
-  <br />
-  <a href="https://flo-ai.rootflo.ai" rel=""><strong>Checkout the docs »</strong></a>
-  <br />
-  <br />
-  <a href="https://github.com/rootflo/flo-ai">Github</a>
-   •
-  <a href="https://rootflo.ai">Website</a>
-   •
-    <a href="https://github.com/rootflo/flo-ai/blob/develop/ROADMAP.md">Roadmap</a>
-  </p>
-
-<hr />
-
-<h1 id="flo-ai-">Flo AI 🌊</h1>
-
-<blockquote>
-  <p>Build production-ready AI agents and teams with minimal code</p>
-</blockquote>
-
-<p>Flo AI is a Python framework that makes building production-ready AI agents and teams as easy as writing YAML. Think “Kubernetes for AI Agents” - compose complex AI architectures using pre-built components while maintaining the flexibility to create your own.</p>
-
-<h2 id="-features">✨ Features</h2>
-
-<ul>
-  <li>🔌 <strong>Truly Composable</strong>: Build complex AI systems by combining smaller, reusable components</li>
-  <li>🏗️ <strong>Production-Ready</strong>: Built-in best practices and optimizations for production deployments</li>
-  <li>📝 <strong>YAML-First</strong>: Define your entire agent architecture in simple YAML</li>
-  <li>🔧 <strong>Flexible</strong>: Use pre-built components or create your own</li>
-  <li>🤝 <strong>Team-Oriented</strong>: Create and manage teams of AI agents working together</li>
-  <li>📚 <strong>RAG Support</strong>: Built-in support for Retrieval-Augmented Generation</li>
-  <li>🔄 <strong>Langchain Compatible</strong>: Works with all your favorite Langchain tools</li>
-</ul>
-
-<h2 id="-quick-start">🚀 Quick Start</h2>
-
-<h3 id="installation">Installation</h3>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>flo-ai
-<span class="c"># or using poetry</span>
-poetry add flo-ai
-</code></pre></div></div>
-
-<h3 id="create-your-first-ai-team-in-30-seconds">Create Your First AI Team in 30 Seconds</h3>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">flo_ai</span> <span class="kn">import</span> <span class="n">Flo</span><span class="p">,</span> <span class="n">FloSession</span>
-<span class="kn">from</span> <span class="nn">langchain_openai</span> <span class="kn">import</span> <span class="n">ChatOpenAI</span>
-
-<span class="c1"># Define your team in YAML
-</span><span class="n">yaml_config</span> <span class="o">=</span> <span class="s">"""
-apiVersion: flo/alpha-v1
-kind: FloRoutedTeam
-name: research-team
-team:
-    name: ResearchTeam
-    router:
-        name: TeamLead
-        kind: supervisor
-    agents:
-      - name: Researcher
-        role: Research Specialist
-        job: Research latest information on given topics
-        tools:
-          - name: TavilySearchResults
-      - name: Writer
-        role: Content Creator
-        job: Create engaging content from research
-"""</span>
-
-<span class="c1"># Set up and run
-</span><span class="n">llm</span> <span class="o">=</span> <span class="n">ChatOpenAI</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-<span class="n">session</span> <span class="o">=</span> <span class="n">FloSession</span><span class="p">(</span><span class="n">llm</span><span class="p">).</span><span class="n">register_tool</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">"TavilySearchResults"</span><span class="p">,</span> <span class="n">tool</span><span class="o">=</span><span class="n">TavilySearchResults</span><span class="p">())</span>
-<span class="n">flo</span> <span class="o">=</span> <span class="n">Flo</span><span class="p">.</span><span class="n">build</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">yaml</span><span class="o">=</span><span class="n">yaml_config</span><span class="p">)</span>
-
-<span class="c1"># Start streaming results
-</span><span class="k">for</span> <span class="n">response</span> <span class="ow">in</span> <span class="n">flo</span><span class="p">.</span><span class="n">stream</span><span class="p">(</span><span class="s">"Write about recent AI developments"</span><span class="p">):</span>
-    <span class="k">print</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
-</code></pre></div></div>
-
-<h2 id="-documentation">📖 Documentation</h2>
-
-<p>Visit our <a href="https://flo-ai.rootflo.ai">comprehensive documentation</a> for:</p>
-<ul>
-  <li>Detailed tutorials</li>
-  <li>Architecture deep-dives</li>
-  <li>API reference</li>
-  <li>Best practices</li>
-  <li>Advanced examples</li>
-</ul>
-
-<h2 id="-why-flo-ai">🌟 Why Flo AI?</h2>
-
-<h3 id="for-ai-engineers">For AI Engineers</h3>
-<ul>
-  <li><strong>Faster Development</strong>: Build complex AI systems in minutes, not days</li>
-  <li><strong>Production Focus</strong>: Built-in optimizations and best practices</li>
-  <li><strong>Flexibility</strong>: Use our components or build your own</li>
-</ul>
-
-<h3 id="for-teams">For Teams</h3>
-<ul>
-  <li><strong>Maintainable</strong>: YAML-first approach makes systems easy to understand and modify</li>
-  <li><strong>Scalable</strong>: From single agents to complex team hierarchies</li>
-  <li><strong>Testable</strong>: Each component can be tested independently</li>
-</ul>
-
-<h2 id="-use-cases">🎯 Use Cases</h2>
-
-<ul>
-  <li>🤖 Customer Service Automation</li>
-  <li>📊 Data Analysis Pipelines</li>
-  <li>📝 Content Generation</li>
-  <li>🔍 Research Automation</li>
-  <li>🎯 Task-Specific AI Teams</li>
-</ul>
-
-<h2 id="-contributing">🤝 Contributing</h2>
-
-<p>We love your input! Check out our <a href="/flo-ai/CONTRIBUTING.md">Contributing Guide</a> to get started. Ways to contribute:</p>
-
-<ul>
-  <li>🐛 Report bugs</li>
-  <li>💡 Propose new features</li>
-  <li>📝 Improve documentation</li>
-  <li>🔧 Submit PRs</li>
-</ul>
-
-<h2 id="-license">📜 License</h2>
-
-<p>Flo AI is <a href="/flo-ai/LICENSE">MIT Licensed</a>.</p>
-
-<h2 id="-acknowledgments">🙏 Acknowledgments</h2>
-
-<p>Built with ❤️ using:</p>
-<ul>
-  <li><a href="https://github.com/hwchase17/langchain">LangChain</a></li>
-  <li><a href="https://github.com/langchain-ai/langgraph">LangGraph</a></li>
-</ul>
-
-<hr />
-
-<div align="center">
-  <strong>Built with ❤️ by the Rootflo team</strong>
-  <br /><a href="https://github.com/rootflo/flo-ai/discussions">Community</a> •
-  <a href="https://flo-ai.rootflo.ai">Documentation</a>
-</div>
-
-
-      
-      <div class="footer border-top border-gray-light mt-5 pt-3 text-right text-gray">
-        This site is open source. <a href="https://github.com/rootflo/flo-ai/edit/develop/README.md">Improve this page</a>.
-      </div>
-      
+    <!-- Shopping Cart Sidebar -->
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h3>Shopping Cart</h3>
+            <button class="close-cart" onclick="toggleCart()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="cart-items" id="cartItems">
+            <!-- Cart items will be displayed here -->
+        </div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span>Total: <span id="cartTotal">$0.00</span></span>
+                <span class="free-badge">FREE at checkout!</span>
+            </div>
+            <button class="checkout-btn" onclick="checkout()">Proceed to FREE Checkout</button>
+        </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/anchor-js/4.1.0/anchor.min.js" integrity="sha256-lZaRhKri35AyJSypXXs4o6OPFTbTmUoltBbDCbdzegg=" crossorigin="anonymous"></script>
-    <script>anchors.add();</script>
-  </body>
+
+    <!-- Product Modal -->
+    <div class="modal" id="productModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div class="modal-body" id="modalBody">
+                <!-- Product details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div class="modal" id="checkoutModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeCheckoutModal()">&times;</span>
+            <div class="checkout-content">
+                <h2>FREE Checkout - Order Confirmation</h2>
+                <div class="order-summary" id="orderSummary">
+                    <!-- Order details will be displayed here -->
+                </div>
+                <div class="shipping-info">
+                    <h3>Shipping Information</h3>
+                    <p><strong>Shipping:</strong> FREE (2-Day Prime Delivery)</p>
+                    <p><strong>Address:</strong> 123 Free Street, Freetown, FS 12345</p>
+                </div>
+                <div class="payment-info">
+                    <h3>Payment Information</h3>
+                    <p><strong>Payment Method:</strong> FreeZon Credit (Unlimited Balance)</p>
+                    <p><strong>Total Charged:</strong> <span class="free-price">$0.00</span></p>
+                </div>
+                <button class="place-order-btn" onclick="placeOrder()">Place Your FREE Order</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div class="modal" id="successModal">
+        <div class="modal-content">
+            <div class="success-content">
+                <i class="fas fa-check-circle success-icon"></i>
+                <h2>Order Placed Successfully!</h2>
+                <p>Your FREE order has been confirmed and will be delivered within 2 days.</p>
+                <p><strong>Order #:</strong> <span id="orderNumber"></span></p>
+                <button class="continue-shopping-btn" onclick="closeSuccessModal()">Continue Shopping</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>Get to Know Us</h4>
+                <ul>
+                    <li><a href="#">About FreeZon</a></li>
+                    <li><a href="#">Careers</a></li>
+                    <li><a href="#">Press Releases</a></li>
+                    <li><a href="#">FreeZon Science</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Make Money with Us</h4>
+                <ul>
+                    <li><a href="#">Sell on FreeZon</a></li>
+                    <li><a href="#">Become an Affiliate</a></li>
+                    <li><a href="#">Advertise Your Products</a></li>
+                    <li><a href="#">Self-Publish with Us</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>FreeZon Payment Products</h4>
+                <ul>
+                    <li><a href="#">FreeZon Business Card</a></li>
+                    <li><a href="#">Shop with Points</a></li>
+                    <li><a href="#">Reload Your Balance</a></li>
+                    <li><a href="#">FreeZon Currency Converter</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Let Us Help You</h4>
+                <ul>
+                    <li><a href="#">Your Account</a></li>
+                    <li><a href="#">Your Orders</a></li>
+                    <li><a href="#">Shipping Rates & Policies</a></li>
+                    <li><a href="#">Returns & Replacements</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 FreeZon.com - Everything Free, Always!</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
 </html>
