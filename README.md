@@ -537,3 +537,68 @@ Built with ❤️ using:
   <br><a href="https://github.com/rootflo/flo-ai/discussions">Community</a> •
   <a href="https://flo-ai.rootflo.ai">Documentation</a>
 </div>
+
+# Pandora GPT-5o (Toy) – Self-Hosted Clone
+
+This repository provides a **pedagogical** “clone” of the *Pandora GPT-5o* transformer lattice demo, wrapped behind an HTTP API that mimics the OpenAI `chat/completions` endpoint.
+
+⚠️ **Disclaimer**: This is *not* an actual GPT-5-class model – it is a tiny transformer (8-dimensional embeddings, 2 heads, 2 layers) intended solely for demonstration and learning.
+
+---
+
+## Quick start
+
+1. **Install dependencies**
+
+   ```bash
+   python -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+2. **Run the server**
+
+   ```bash
+   uvicorn pandora_clone.server:app --reload --port 8000
+   ```
+
+   The API is now available at `http://localhost:8000/v1/chat/completions`.
+
+3. **Sample request**
+
+   ```bash
+   curl -X POST http://localhost:8000/v1/chat/completions \
+        -H "Content-Type: application/json" \
+        -d '{"embeddings": [[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8], [0.05,0.04,0.03,0.02,0.01,0,0.1,0.2]]}' | jq
+   ```
+
+   Response structure mirrors OpenAI’s format:
+
+   ```jsonc
+   {
+     "object": "chat.completion",
+     "choices": [
+       {
+         "index": 0,
+         "message": {
+           "role": "assistant",
+           "content": "[[...]]"  // transformed embeddings
+         },
+         "finish_reason": "stop"
+       }
+     ],
+     "usage": {
+       "prompt_tokens": 2,
+       "completion_tokens": 2
+     }
+   }
+   ```
+
+---
+
+## How it works
+
+* `pandora_clone/model.py` – Minimal NumPy re-implementation of the C demo (multi-head attention, feed-forward, residuals, layer norm, positional encoding).
+* `pandora_clone/server.py` – FastAPI wrapper exposing a single `POST /v1/chat/completions` endpoint.
+
+Feel free to hack on the dimensions, number of layers, or replace the NumPy model with a full-blown PyTorch implementation (or load weights from a trained model) – the HTTP contract will remain the same.
