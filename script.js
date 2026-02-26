@@ -241,7 +241,7 @@ function sortProducts(products = []) {
 }
 
 // Handle sorting change
-function sortProducts() {
+function handleSortChange() {
     loadProducts();
 }
 

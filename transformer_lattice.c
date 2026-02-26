@@ -242,6 +242,22 @@ void lattice_forward(Lattice *L,Tensor *X){
     for(int l=0;l<L->n_layers;l++) block_forward(&L->layers[l],X);
 }
 
+/* ---------- Destructors ---------- */
+static void free_head(Head *h){
+    free_tensor(&h->Wq); free_tensor(&h->Wk);
+    free_tensor(&h->Wv); free_tensor(&h->Wo);
+}
+static void free_mha(MHA *m){
+    for(int i=0;i<m->n_heads;i++) free_head(&m->heads[i]);
+    free(m->heads); m->heads=NULL;
+}
+static void free_ffn(FFN *f){ free_tensor(&f->W1); free_tensor(&f->W2); }
+static void free_block(Block *b){ free_mha(&b->mha); free_ffn(&b->ffn); }
+static void free_lattice(Lattice *L){
+    for(int i=0;i<L->n_layers;i++) free_block(&L->layers[i]);
+    free(L->layers); L->layers=NULL;
+}
+
 /* ----------- 8. C API function for integration ----------- */
 #ifdef __cplusplus
 extern "C" {
@@ -269,8 +285,9 @@ void lattice_forward_api(int seq_len,int d_model,int n_heads,int d_ff,int n_laye
     /* copy back */
     memcpy(data,X.d,sizeof(float)*seq_len*d_model);
 
-    /* cleanup tensor memory (net cleanup omitted for brevity) */
+    /* cleanup */
     free_tensor(&X);
+    free_lattice(&net);
 }
 
 #ifdef __cplusplus
