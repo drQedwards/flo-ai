@@ -1,0 +1,115 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Wavefront AI | Rootflo",
+  "colors": {
+    "primary": "#3B82F6",
+    "light": "#60A5FA",
+    "dark": "#1E40AF"
+  },
+  "favicon": "/favicon.png",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Wavefront",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "index"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "FloAI",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "flo-ai/index",
+              "flo-ai/quickstart",
+              "flo-ai/development"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "flo-ai/core-features/messages",
+              "flo-ai/core-features/agents",
+              "flo-ai/core-features/arium",
+              "flo-ai/core-features/yaml-agents",
+              "flo-ai/core-features/yaml-workflows"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "flo-ai/advanced/llm-providers",
+              "flo-ai/advanced/tools",
+              "flo-ai/advanced/routing",
+              "flo-ai/advanced/telemetry"
+            ]
+          },
+          {
+            "group": "Examples",
+            "pages": [
+              "flo-ai/examples/code"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "GitHub",
+          "href": "https://github.com/rootflo/flo-ai",
+          "icon": "github"
+        },
+        {
+          "anchor": "Discord",
+          "href": "https://discord.gg/BPXsNwfuRU",
+          "icon": "comments"
+        }
+      ]
+    }
+  },
+  "logo": {
+    "light": "/logo/light.png",
+    "dark": "/logo/dark.png"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Website",
+        "href": "https://rootflo.ai"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Contact us",
+      "href": "mailto:sales@rootflo.ai?subject=Partnership%20Inquiry&body=Hi%2C%0A%0AI%20would%20like%20to%20know%20more%20about%20your%20Wavefront%20Enterprise%20AI%20Platform.%0A%0AThanks%2C%0A%0A"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
+  },
+  "footer": {
+    "socials": {
+      "x": "https://x.com/rootflo_ai",
+      "github": "https://github.com/rootflo/wavefront",
+      "linkedin": "https://linkedin.com/company/rootflo",
+      "discord": "https://discord.gg/BPXsNwfuRU"
+    }
+  }
+}

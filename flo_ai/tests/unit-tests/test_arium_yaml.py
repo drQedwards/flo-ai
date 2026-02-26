@@ -1,0 +1,1121 @@
+"""
+Integration tests for YAML-based Arium workflow construction.
+
+This module tests the actual building and integration of arium workflows from YAML,
+including function nodes, routers, pre-built agents, and complex workflows.
+
+Note: YAML structure validation is tested in test_arium_yaml_validation.py.
+This file focuses on integration and runtime behavior.
+"""
+
+import pytest
+from unittest.mock import Mock, patch
+
+from flo_ai.arium.builder import AriumBuilder
+from flo_ai.arium.memory import MessageMemory, BaseMemory
+from flo_ai.agent import Agent
+from flo_ai.llm import OpenAI
+
+
+class TestAriumYamlBuilder:
+    """Test class for YAML-based Arium builder functionality."""
+
+    def test_from_yaml_validation_no_params(self):
+        """Test that from_yaml fails when no parameters are provided."""
+        with pytest.raises(
+            ValueError, match='Either yaml_str or yaml_file must be provided'
+        ):
+            AriumBuilder.from_yaml()
+
+    def test_from_yaml_validation_both_params(self):
+        """Test that from_yaml fails when both parameters are provided."""
+        with pytest.raises(
+            ValueError, match='Only one of yaml_str or yaml_file should be provided'
+        ):
+            AriumBuilder.from_yaml(yaml_str='test', yaml_file='test.yaml')
+
+    def test_from_yaml_simple_configuration(self):
+        """Test basic YAML configuration parsing."""
+        yaml_config = """
+        metadata:
+          name: test-workflow
+          version: 1.0.0
+          description: "Test workflow"
+          
+        arium:
+          agents:
+            - name: test_agent
+              yaml_config: |
+                agent:
+                  name: test_agent
+                  job: "You are a test agent"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+                    
+          workflow:
+            start: test_agent
+            edges:
+              - from: test_agent
+                to: [end]
+            end: [test_agent]
+        """
+
+        # Mock the AgentBuilder.from_yaml to avoid actual LLM calls
+        with patch('flo_ai.arium.builder.AgentBuilder') as mock_agent_builder:
+            mock_agent = Mock(spec=Agent)
+            mock_agent.name = 'test_agent'
+
+            mock_builder_instance = Mock()
+            mock_builder_instance.build.return_value = mock_agent
+            mock_agent_builder.from_yaml.return_value = mock_builder_instance
+
+            builder = AriumBuilder.from_yaml(yaml_str=yaml_config)
+
+            # Verify the builder was configured correctly
+            assert len(builder._agents) == 1
+            assert builder._agents[0].name == 'test_agent'
+            assert builder._start_node == mock_agent
+            assert mock_agent in builder._end_nodes
+
+    def test_from_yaml_with_custom_memory(self):
+        """Test YAML configuration with custom memory parameter."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: test_agent
+              yaml_config: |
+                agent:
+                  name: test_agent
+                  job: "You are a test agent"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+                    
+          workflow:
+            start: test_agent
+            edges:
+              - from: test_agent
+                to: [end]
+            end: [test_agent]
+        """
+
+        # Create custom memory
+        custom_memory = Mock(spec=MessageMemory)
+
+        with patch('flo_ai.arium.builder.AgentBuilder') as mock_agent_builder:
+            mock_agent = Mock(spec=Agent)
+            mock_agent.name = 'test_agent'
+
+            mock_builder_instance = Mock()
+            mock_builder_instance.build.return_value = mock_agent
+            mock_agent_builder.from_yaml.return_value = mock_builder_instance
+
+            builder = AriumBuilder.from_yaml(yaml_str=yaml_config, memory=custom_memory)
+
+            # Verify custom memory was used
+            assert builder._memory == custom_memory
+
+    def test_from_yaml_default_memory(self):
+        """Test that default MessageMemory is used when no memory is provided."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: test_agent
+              yaml_config: |
+                agent:
+                  name: test_agent
+                  job: "You are a test agent"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+                    
+          workflow:
+            start: test_agent
+            edges:
+              - from: test_agent
+                to: [end]
+            end: [test_agent]
+        """
+
+        with patch('flo_ai.arium.builder.AgentBuilder') as mock_agent_builder:
+            mock_agent = Mock(spec=Agent)
+            mock_agent.name = 'test_agent'
+
+            mock_builder_instance = Mock()
+            mock_builder_instance.build.return_value = mock_agent
+            mock_agent_builder.from_yaml.return_value = mock_builder_instance
+
+            builder = AriumBuilder.from_yaml(yaml_str=yaml_config)
+
+            # Verify default MessageMemory was created
+            assert builder._memory is not None
+            assert isinstance(builder._memory, MessageMemory)
+
+    def test_from_yaml_with_function_nodes(self):
+        """Test YAML configuration with function nodes using function_registry."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: test_agent
+              yaml_config: |
+                agent:
+                  name: test_agent
+                  job: "Test agent"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+                    
+          function_nodes:
+            - name: test_function_node
+              function_name: test_function
+              description: "Test function node"
+            
+          workflow:
+            start: test_agent
+            edges:
+              - from: test_agent
+                to: [test_function_node]
+              - from: test_function_node
+                to: [end]
+            end: [test_function_node]
+        """
+
+        # Create mock function
+        async def test_function(inputs):
+            return 'processed'
+
+        function_registry = {'test_function': test_function}
+
+        with patch('flo_ai.arium.builder.AgentBuilder') as mock_agent_builder:
+            mock_agent = Mock(spec=Agent)
+            mock_agent.name = 'test_agent'
+
+            mock_builder_instance = Mock()
+            mock_builder_instance.build.return_value = mock_agent
+            mock_agent_builder.from_yaml.return_value = mock_builder_instance
+
+            builder = AriumBuilder.from_yaml(
+                yaml_str=yaml_config, function_registry=function_registry
+            )
+
+            # Verify function nodes were added
+            assert len(builder._function_nodes) == 1
+            assert builder._function_nodes[0].name == 'test_function_node'
+            assert builder._function_nodes[0].function == test_function
+
+    def test_from_yaml_with_function_nodes_prefilled_params(self):
+        """Test YAML configuration with function nodes using prefilled_params."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: test_agent
+              yaml_config: |
+                agent:
+                  name: test_agent
+                  job: "Test agent"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+                    
+          function_nodes:
+            - name: test_function_node
+              function_name: test_function
+              description: "Test function node with prefilled params"
+              prefilled_params:
+                param1: value1
+                param2: value2
+                param3: 42
+            
+          workflow:
+            start: test_agent
+            edges:
+              - from: test_agent
+                to: [test_function_node]
+              - from: test_function_node
+                to: [end]
+            end: [test_function_node]
+        """
+
+        # Create mock function
+        async def test_function(
+            inputs, variables=None, param1=None, param2=None, param3=None
+        ):
+            return f'processed with param1={param1}, param2={param2}, param3={param3}'
+
+        function_registry = {'test_function': test_function}
+
+        with patch('flo_ai.arium.builder.AgentBuilder') as mock_agent_builder:
+            mock_agent = Mock(spec=Agent)
+            mock_agent.name = 'test_agent'
+
+            mock_builder_instance = Mock()
+            mock_builder_instance.build.return_value = mock_agent
+            mock_agent_builder.from_yaml.return_value = mock_builder_instance
+
+            builder = AriumBuilder.from_yaml(
+                yaml_str=yaml_config, function_registry=function_registry
+            )
+
+            # Verify function nodes were added with prefilled_params
+            assert len(builder._function_nodes) == 1
+            function_node = builder._function_nodes[0]
+            assert function_node.name == 'test_function_node'
+            assert function_node.function == test_function
+            assert (
+                function_node.description == 'Test function node with prefilled params'
+            )
+            assert function_node.prefilled_params is not None
+            assert function_node.prefilled_params['param1'] == 'value1'
+            assert function_node.prefilled_params['param2'] == 'value2'
+            assert function_node.prefilled_params['param3'] == 42
+
+    def test_from_yaml_with_routers(self):
+        """Test YAML configuration with custom routers."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: agent1
+              yaml_config: |
+                agent:
+                  name: agent1
+                  job: "First agent"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+            - name: agent2
+              yaml_config: |
+                agent:
+                  name: agent2
+                  job: "Second agent"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+                    
+          workflow:
+            start: agent1
+            edges:
+              - from: agent1
+                to: [agent2]
+                router: test_router
+              - from: agent2
+                to: [end]
+            end: [agent2]
+        """
+
+        # Create mock router
+        def test_router(memory: BaseMemory) -> str:
+            return 'agent2'
+
+        routers = {'test_router': test_router}
+
+        with patch('flo_ai.arium.builder.AgentBuilder') as mock_agent_builder:
+            mock_agent1 = Mock(spec=Agent)
+            mock_agent1.name = 'agent1'
+            mock_agent2 = Mock(spec=Agent)
+            mock_agent2.name = 'agent2'
+
+            mock_builder_instance = Mock()
+            mock_builder_instance.build.side_effect = [mock_agent1, mock_agent2]
+            mock_agent_builder.from_yaml.return_value = mock_builder_instance
+
+            builder = AriumBuilder.from_yaml(yaml_str=yaml_config, routers=routers)
+
+            # Verify router was assigned
+            assert len(builder._edges) == 1
+            from_node, to_nodes, router = builder._edges[0]
+            assert from_node == mock_agent1
+            assert to_nodes == [mock_agent2]
+            assert router == test_router
+
+    def test_from_yaml_missing_function_in_registry_error(self):
+        """Test error when referenced function is not in function_registry."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: test_agent
+              yaml_config: |
+                agent:
+                  name: test_agent
+                  job: "Test agent"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+                    
+          function_nodes:
+            - name: missing_function_node
+              function_name: missing_function
+            
+          workflow:
+            start: test_agent
+            edges:
+              - from: test_agent
+                to: [missing_function_node]
+              - from: missing_function_node
+                to: [end]
+            end: [missing_function_node]
+        """
+
+        with patch('flo_ai.arium.builder.AgentBuilder'):
+            with pytest.raises(
+                ValueError,
+                match='Function missing_function not found in provided function_registry dictionary',
+            ):
+                AriumBuilder.from_yaml(yaml_str=yaml_config, function_registry={})
+
+    def test_from_yaml_missing_router_error(self):
+        """Test error when referenced router is not provided."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: agent1
+              yaml_config: |
+                agent:
+                  name: agent1
+                  job: "Test agent"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+            - name: agent2
+              yaml_config: |
+                agent:
+                  name: agent2
+                  job: "Test agent"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+                    
+          workflow:
+            start: agent1
+            edges:
+              - from: agent1
+                to: [agent2]
+                router: missing_router
+              - from: agent2
+                to: [end]
+            end: [agent2]
+        """
+
+        with patch('flo_ai.arium.builder.AgentBuilder'):
+            with pytest.raises(
+                ValueError,
+                match='Router missing_router not found',
+            ):
+                AriumBuilder.from_yaml(yaml_str=yaml_config, routers={})
+
+    def test_from_yaml_external_file_reference(self):
+        """Test YAML configuration with external agent file reference."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: external_agent
+              yaml_file: "path/to/agent.yaml"
+                    
+          workflow:
+            start: external_agent
+            edges:
+              - from: external_agent
+                to: [end]
+            end: [external_agent]
+        """
+
+        with patch('flo_ai.arium.builder.AgentBuilder') as mock_agent_builder:
+            mock_agent = Mock(spec=Agent)
+            mock_agent.name = 'external_agent'
+
+            mock_builder_instance = Mock()
+            mock_builder_instance.build.return_value = mock_agent
+            mock_agent_builder.from_yaml.return_value = mock_builder_instance
+
+            AriumBuilder.from_yaml(yaml_str=yaml_config)
+
+            # Verify AgentBuilder.from_yaml was called with yaml_file
+            mock_agent_builder.from_yaml.assert_called_with(
+                yaml_file='path/to/agent.yaml', base_llm=None, tool_registry=None
+            )
+
+    def test_from_yaml_with_base_llm(self):
+        """Test YAML configuration with base LLM parameter."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: test_agent
+              yaml_config: |
+                agent:
+                  name: test_agent
+                  job: "Test agent"
+                    
+          workflow:
+            start: test_agent
+            edges:
+              - from: test_agent
+                to: [end]
+            end: [test_agent]
+        """
+
+        mock_llm = Mock(spec=OpenAI)
+
+        with patch('flo_ai.arium.builder.AgentBuilder') as mock_agent_builder:
+            mock_agent = Mock(spec=Agent)
+            mock_agent.name = 'test_agent'
+
+            mock_builder_instance = Mock()
+            mock_builder_instance.build.return_value = mock_agent
+            mock_agent_builder.from_yaml.return_value = mock_builder_instance
+
+            AriumBuilder.from_yaml(yaml_str=yaml_config, base_llm=mock_llm)
+
+            # Verify AgentBuilder.from_yaml was called with base_llm
+            calls = mock_agent_builder.from_yaml.call_args_list
+            assert len(calls) == 1
+            call_args, call_kwargs = calls[0]
+            assert 'yaml_str' in call_kwargs
+            assert 'base_llm' in call_kwargs
+            assert call_kwargs['base_llm'] == mock_llm
+            # Just verify it contains the expected content
+            assert 'agent:' in call_kwargs['yaml_str']
+            assert 'name: test_agent' in call_kwargs['yaml_str']
+            assert 'job: "Test agent"' in call_kwargs['yaml_str']
+
+    def test_from_yaml_complex_workflow(self):
+        """Test complex workflow with multiple agents, function nodes, and routers."""
+        yaml_config = """
+        metadata:
+          name: complex-workflow
+          version: 2.0.0
+          
+        arium:
+          agents:
+            - name: dispatcher
+              yaml_config: |
+                agent:
+                  name: dispatcher
+                  role: Dispatcher
+                  job: "Route requests to appropriate handlers"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+            - name: processor
+              yaml_config: |
+                agent:
+                  name: processor
+                  role: Processor
+                  job: "Process the data"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+            - name: summarizer
+              yaml_config: |
+                agent:
+                  name: summarizer
+                  role: Summarizer
+                  job: "Create final summary"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+                    
+          function_nodes:
+            - name: data_function_node
+              function_name: data_function
+            - name: analysis_function_node
+              function_name: analysis_function
+            
+          workflow:
+            start: dispatcher
+            edges:
+              - from: dispatcher
+                to: [data_function_node, analysis_function_node, processor]
+                router: dispatch_router
+              - from: data_function_node
+                to: [summarizer]
+              - from: analysis_function_node
+                to: [summarizer]
+              - from: processor
+                to: [summarizer]
+              - from: summarizer
+                to: [end]
+            end: [summarizer]
+        """
+
+        # Create mocks
+        def dispatch_router(memory: BaseMemory) -> str:
+            return 'processor'
+
+        async def data_function(inputs):
+            return 'data processed'
+
+        async def analysis_function(inputs):
+            return 'analysis done'
+
+        function_registry = {
+            'data_function': data_function,
+            'analysis_function': analysis_function,
+        }
+        routers = {'dispatch_router': dispatch_router}
+
+        with patch('flo_ai.arium.builder.AgentBuilder') as mock_agent_builder:
+            mock_dispatcher = Mock(spec=Agent)
+            mock_dispatcher.name = 'dispatcher'
+            mock_processor = Mock(spec=Agent)
+            mock_processor.name = 'processor'
+            mock_summarizer = Mock(spec=Agent)
+            mock_summarizer.name = 'summarizer'
+
+            mock_builder_instance = Mock()
+            mock_builder_instance.build.side_effect = [
+                mock_dispatcher,
+                mock_processor,
+                mock_summarizer,
+            ]
+            mock_agent_builder.from_yaml.return_value = mock_builder_instance
+
+            builder = AriumBuilder.from_yaml(
+                yaml_str=yaml_config,
+                function_registry=function_registry,
+                routers=routers,
+            )
+
+            # Verify all components were configured
+            assert len(builder._agents) == 3
+            assert len(builder._function_nodes) == 2
+            assert len(builder._edges) == 4  # 4 edge definitions
+            assert builder._start_node == mock_dispatcher
+            assert mock_summarizer in builder._end_nodes
+
+    def test_from_yaml_end_keyword_handling(self):
+        """Test proper handling of 'end' keyword in edge definitions."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: test_agent
+              yaml_config: |
+                agent:
+                  name: test_agent
+                  job: "Test agent"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+                    
+          workflow:
+            start: test_agent
+            edges:
+              - from: test_agent
+                to: [end]  # Should not create actual edge, handled by end nodes
+            end: [test_agent]
+        """
+
+        with patch('flo_ai.arium.builder.AgentBuilder') as mock_agent_builder:
+            mock_agent = Mock(spec=Agent)
+            mock_agent.name = 'test_agent'
+
+            mock_builder_instance = Mock()
+            mock_builder_instance.build.return_value = mock_agent
+            mock_agent_builder.from_yaml.return_value = mock_builder_instance
+
+            builder = AriumBuilder.from_yaml(yaml_str=yaml_config)
+
+            # Should not create any edges since only 'end' was in to_nodes
+            assert len(builder._edges) == 0
+            assert mock_agent in builder._end_nodes
+
+    def test_from_yaml_direct_agent_configuration(self):
+        """Test direct agent configuration without nested YAML."""
+        yaml_config = """
+        metadata:
+          name: test-workflow
+          version: 1.0.0
+          
+        arium:
+          agents:
+            - name: test_agent
+              role: Test Agent
+              job: "You are a test agent for validation"
+              model:
+                provider: openai
+                name: gpt-4o-mini
+                base_url: "https://api.openai.com/v1"
+              settings:
+                temperature: 0.5
+                max_retries: 2
+                reasoning_pattern: REACT
+                
+          workflow:
+            start: test_agent
+            edges:
+              - from: test_agent
+                to: [end]
+            end: [test_agent]
+        """
+
+        with patch('flo_ai.llm.OpenAI') as mock_openai:
+            mock_llm = Mock()
+            mock_openai.return_value = mock_llm
+
+            builder = AriumBuilder.from_yaml(yaml_str=yaml_config)
+
+            # Verify the builder was configured correctly
+            assert len(builder._agents) == 1
+            agent = builder._agents[0]
+            assert agent.name == 'test_agent'
+            assert agent.role == 'Test Agent'
+            assert (
+                agent.system_prompt
+                == 'You are Test Agent. You are a test agent for validation'
+            )
+            assert mock_llm.temperature == 0.5
+
+    def test_from_yaml_direct_config_with_function_nodes(self):
+        """Test direct agent configuration with function nodes."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: test_agent
+              job: "Test agent with function nodes"
+              model:
+                provider: openai
+                name: gpt-4o-mini
+                
+          function_nodes:
+            - name: calculator_function_node
+              function_name: calculator
+            - name: web_search_function_node
+              function_name: web_search
+            
+          workflow:
+            start: test_agent
+            edges:
+              - from: test_agent
+                to: [end]
+            end: [test_agent]
+        """
+
+        # Create mock functions
+        async def calculator(inputs):
+            return 'calculated'
+
+        async def web_search(inputs):
+            return 'searched'
+
+        function_registry = {
+            'calculator': calculator,
+            'web_search': web_search,
+        }
+
+        with patch('flo_ai.llm.OpenAI') as mock_openai:
+            mock_llm = Mock()
+            mock_openai.return_value = mock_llm
+
+            builder = AriumBuilder.from_yaml(
+                yaml_str=yaml_config, function_registry=function_registry
+            )
+
+            # Verify agent was configured with function nodes
+            assert len(builder._agents) == 1
+            assert len(builder._function_nodes) == 2
+            function_node_names = [fn.name for fn in builder._function_nodes]
+            assert 'calculator_function_node' in function_node_names
+            assert 'web_search_function_node' in function_node_names
+
+    def test_from_yaml_direct_config_with_parser(self):
+        """Test direct agent configuration with structured output parser."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: test_agent
+              job: "Test agent with structured output"
+              model:
+                provider: openai
+                name: gpt-4o-mini
+              parser:
+                name: TestParser
+                fields:
+                  - name: result
+                    type: str
+                    description: "The result"
+                  - name: confidence
+                    type: float
+                    description: "Confidence score"
+                
+          workflow:
+            start: test_agent
+            edges:
+              - from: test_agent
+                to: [end]
+            end: [test_agent]
+        """
+
+        with patch('flo_ai.llm.OpenAI') as mock_openai:
+            with patch(
+                'flo_ai.formatter.yaml_format_parser.FloYamlParser'
+            ) as mock_parser:
+                mock_llm = Mock()
+                mock_openai.return_value = mock_llm
+
+                mock_parser_instance = Mock()
+                mock_parser_instance.get_format.return_value = {'type': 'object'}
+                mock_parser.create.return_value = mock_parser_instance
+
+                builder = AriumBuilder.from_yaml(yaml_str=yaml_config)
+
+                # Verify parser was configured
+                assert len(builder._agents) == 1
+                agent = builder._agents[0]
+                assert agent.output_schema == {'type': 'object'}
+
+    def test_from_yaml_mixed_configuration_methods(self):
+        """Test mixing different agent configuration methods in one workflow."""
+        yaml_config = """
+        arium:
+          agents:
+            # Direct configuration
+            - name: direct_agent
+              role: Direct Agent
+              job: "Directly configured agent"
+              model:
+                provider: openai
+                name: gpt-4o-mini
+                
+            # Inline YAML configuration
+            - name: yaml_agent
+              yaml_config: |
+                agent:
+                  name: yaml_agent
+                  role: YAML Agent
+                  job: "YAML configured agent"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+                    
+            # External file reference
+            - name: file_agent
+              yaml_file: "path/to/agent.yaml"
+                
+          workflow:
+            start: direct_agent
+            edges:
+              - from: direct_agent
+                to: [yaml_agent]
+              - from: yaml_agent
+                to: [file_agent]
+              - from: file_agent
+                to: [end]
+            end: [file_agent]
+        """
+
+        with patch('flo_ai.llm.OpenAI') as mock_openai:
+            with patch('flo_ai.arium.builder.AgentBuilder') as mock_agent_builder:
+                mock_llm = Mock()
+                mock_openai.return_value = mock_llm
+
+                # Mock for direct agent configuration
+                mock_direct_agent = Mock(spec=Agent)
+                mock_direct_agent.name = 'direct_agent'
+                mock_direct_agent.role = 'Direct Agent'
+
+                # Mock for inline YAML config
+                mock_yaml_agent = Mock(spec=Agent)
+                mock_yaml_agent.name = 'yaml_agent'
+
+                # Mock for external file config
+                mock_file_agent = Mock(spec=Agent)
+                mock_file_agent.name = 'file_agent'
+
+                # Mock the AgentBuilder instance for direct configuration
+                mock_direct_builder = Mock()
+                mock_direct_builder.with_name.return_value = mock_direct_builder
+                mock_direct_builder.with_prompt.return_value = mock_direct_builder
+                mock_direct_builder.with_llm.return_value = mock_direct_builder
+                mock_direct_builder.with_tools.return_value = mock_direct_builder
+                mock_direct_builder.with_retries.return_value = mock_direct_builder
+                mock_direct_builder.with_reasoning.return_value = mock_direct_builder
+                mock_direct_builder.with_output_schema.return_value = (
+                    mock_direct_builder
+                )
+                mock_direct_builder.with_role.return_value = mock_direct_builder
+                mock_direct_builder.build.return_value = mock_direct_agent
+
+                # Mock the AgentBuilder class to return our mocked builder
+                mock_agent_builder.return_value = mock_direct_builder
+
+                # Mock for inline YAML and file config
+                mock_builder_instance = Mock()
+                mock_builder_instance.build.side_effect = [
+                    mock_yaml_agent,
+                    mock_file_agent,
+                ]
+                mock_agent_builder.from_yaml.return_value = mock_builder_instance
+
+                builder = AriumBuilder.from_yaml(yaml_str=yaml_config)
+
+                # Verify all three agents were created
+                assert len(builder._agents) == 3
+
+                # Check direct agent
+                direct_agent = next(
+                    a for a in builder._agents if a.name == 'direct_agent'
+                )
+                assert direct_agent.role == 'Direct Agent'
+
+                # Check other agents were added
+                assert any(a.name == 'yaml_agent' for a in builder._agents)
+                assert any(a.name == 'file_agent' for a in builder._agents)
+
+    def test_from_yaml_direct_config_missing_model_error(self):
+        """Test error when agent is missing model and no base_llm is provided."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: test_agent
+              job: "Test agent"
+              # missing model field
+          workflow:
+            start: test_agent
+            edges: []
+            end: [test_agent]
+        """
+
+        with pytest.raises(ValueError, match='Model must be specified'):
+            AriumBuilder.from_yaml(yaml_str=yaml_config)
+
+    def test_from_yaml_direct_config_with_base_llm(self):
+        """Test direct agent configuration with base LLM override."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: test_agent
+              job: "Test agent without model config"
+              settings:
+                temperature: 0.7
+                
+          workflow:
+            start: test_agent
+            edges: []
+            end: [test_agent]
+        """
+
+        mock_base_llm = Mock(spec=OpenAI)
+
+        builder = AriumBuilder.from_yaml(yaml_str=yaml_config, base_llm=mock_base_llm)
+
+        # Verify agent was created with base LLM
+        assert len(builder._agents) == 1
+        agent = builder._agents[0]
+        assert agent.llm == mock_base_llm
+        assert mock_base_llm.temperature == 0.7
+
+    def test_from_yaml_prebuilt_agents(self):
+        """Test using pre-built agents with YAML workflow."""
+        yaml_config = """
+        arium:
+          agents:
+            # Reference pre-built agents (only name specified)
+            - name: prebuilt_agent1
+            - name: prebuilt_agent2
+            
+          workflow:
+            start: prebuilt_agent1
+            edges:
+              - from: prebuilt_agent1
+                to: [prebuilt_agent2]
+              - from: prebuilt_agent2
+                to: [end]
+            end: [prebuilt_agent2]
+        """
+
+        # Create mock pre-built agents
+        mock_agent1 = Mock(spec=Agent)
+        mock_agent1.name = 'prebuilt_agent1'
+        mock_agent2 = Mock(spec=Agent)
+        mock_agent2.name = 'prebuilt_agent2'
+
+        prebuilt_agents = {
+            'prebuilt_agent1': mock_agent1,
+            'prebuilt_agent2': mock_agent2,
+        }
+
+        builder = AriumBuilder.from_yaml(yaml_str=yaml_config, agents=prebuilt_agents)
+
+        # Verify pre-built agents were used
+        assert len(builder._agents) == 2
+        assert mock_agent1 in builder._agents
+        assert mock_agent2 in builder._agents
+        assert builder._start_node == mock_agent1
+        assert mock_agent2 in builder._end_nodes
+
+    def test_from_yaml_prebuilt_agents_missing_error(self):
+        """Test error when referenced pre-built agent is not provided."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: missing_agent
+            
+          workflow:
+            start: missing_agent
+            edges: []
+            end: [missing_agent]
+        """
+
+        with pytest.raises(
+            ValueError,
+            match='Agent missing_agent not found in provided agents dictionary',
+        ):
+            AriumBuilder.from_yaml(yaml_str=yaml_config, agents={})
+
+    def test_from_yaml_mixed_prebuilt_and_configured_agents(self):
+        """Test mixing pre-built agents with other configuration methods."""
+        yaml_config = """
+        arium:
+          agents:
+            # Pre-built agent reference
+            - name: prebuilt_agent
+            
+            # Direct configuration
+            - name: direct_agent
+              role: Direct Agent
+              job: "Directly configured agent"
+              model:
+                provider: openai
+                name: gpt-4o-mini
+                
+            # Inline YAML config
+            - name: yaml_agent
+              yaml_config: |
+                agent:
+                  name: yaml_agent
+                  job: "YAML configured agent"
+                  model:
+                    provider: openai
+                    name: gpt-4o-mini
+                    
+          workflow:
+            start: prebuilt_agent
+            edges:
+              - from: prebuilt_agent
+                to: [direct_agent]
+              - from: direct_agent
+                to: [yaml_agent]
+              - from: yaml_agent
+                to: [end]
+            end: [yaml_agent]
+        """
+
+        # Create mock pre-built agent
+        mock_prebuilt_agent = Mock(spec=Agent)
+        mock_prebuilt_agent.name = 'prebuilt_agent'
+
+        prebuilt_agents = {'prebuilt_agent': mock_prebuilt_agent}
+
+        with patch('flo_ai.llm.OpenAI') as mock_openai:
+            with patch('flo_ai.arium.builder.AgentBuilder') as mock_agent_builder:
+                mock_llm = Mock()
+                mock_openai.return_value = mock_llm
+
+                # Mock for direct agent configuration
+                mock_direct_agent = Mock(spec=Agent)
+                mock_direct_agent.name = 'direct_agent'
+                mock_direct_agent.role = 'Direct Agent'
+
+                # Mock for inline YAML config
+                mock_yaml_agent = Mock(spec=Agent)
+                mock_yaml_agent.name = 'yaml_agent'
+
+                # Mock the AgentBuilder instance for direct configuration
+                mock_direct_builder = Mock()
+                mock_direct_builder.with_name.return_value = mock_direct_builder
+                mock_direct_builder.with_prompt.return_value = mock_direct_builder
+                mock_direct_builder.with_llm.return_value = mock_direct_builder
+                mock_direct_builder.with_tools.return_value = mock_direct_builder
+                mock_direct_builder.with_retries.return_value = mock_direct_builder
+                mock_direct_builder.with_reasoning.return_value = mock_direct_builder
+                mock_direct_builder.with_output_schema.return_value = (
+                    mock_direct_builder
+                )
+                mock_direct_builder.with_role.return_value = mock_direct_builder
+                mock_direct_builder.build.return_value = mock_direct_agent
+
+                # Mock the AgentBuilder class to return our mocked builder
+                mock_agent_builder.return_value = mock_direct_builder
+
+                # Mock for inline YAML config
+                mock_builder_instance = Mock()
+                mock_builder_instance.build.return_value = mock_yaml_agent
+                mock_agent_builder.from_yaml.return_value = mock_builder_instance
+
+                builder = AriumBuilder.from_yaml(
+                    yaml_str=yaml_config, agents=prebuilt_agents
+                )
+
+                # Verify all agents were created/added
+                assert len(builder._agents) == 3
+
+                # Check pre-built agent
+                assert mock_prebuilt_agent in builder._agents
+
+                # Check direct agent was created
+                direct_agent = next(
+                    a for a in builder._agents if a.name == 'direct_agent'
+                )
+                assert direct_agent.role == 'Direct Agent'
+
+                # Check YAML agent was added
+                assert mock_yaml_agent in builder._agents
+
+    def test_from_yaml_prebuilt_agents_with_function_nodes_and_routers(self):
+        """Test pre-built agents working together with function nodes and routers."""
+        yaml_config = """
+        arium:
+          agents:
+            - name: dispatcher
+            - name: processor
+            
+          function_nodes:
+            - name: calculator_function_node
+              function_name: calculator
+            
+          workflow:
+            start: dispatcher
+            edges:
+              - from: dispatcher
+                to: [calculator_function_node, processor]
+                router: smart_router
+              - from: calculator_function_node
+                to: [processor]
+              - from: processor
+                to: [end]
+            end: [processor]
+        """
+
+        # Create mocks
+        mock_dispatcher = Mock(spec=Agent)
+        mock_dispatcher.name = 'dispatcher'
+        mock_processor = Mock(spec=Agent)
+        mock_processor.name = 'processor'
+
+        async def calculator(inputs):
+            return 'calculated'
+
+        def smart_router(memory):
+            return 'processor'
+
+        prebuilt_agents = {'dispatcher': mock_dispatcher, 'processor': mock_processor}
+        function_registry = {'calculator': calculator}
+        routers = {'smart_router': smart_router}
+
+        builder = AriumBuilder.from_yaml(
+            yaml_str=yaml_config,
+            agents=prebuilt_agents,
+            function_registry=function_registry,
+            routers=routers,
+        )
+
+        # Verify everything was configured correctly
+        assert len(builder._agents) == 2
+        assert len(builder._function_nodes) == 1
+        assert len(builder._edges) == 2
+        assert mock_dispatcher in builder._agents
+        assert mock_processor in builder._agents
+        assert builder._function_nodes[0].name == 'calculator_function_node'
+
+
+if __name__ == '__main__':
+    pytest.main([__file__])
