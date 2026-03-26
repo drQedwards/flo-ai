@@ -6,6 +6,7 @@ This repository includes a helper script to wire the `pmll-memory-mcp` server in
 
 - Python 3.11+ with `pmll-memory-mcp` installed.
 - Codex client configured on your machine.
+- `uv >= 0.8.6` if you want to run the same validation workflow used in CI.【flo_ai/pyproject.toml sets this requirement】
 
 ## Preferred (CLI) wiring
 
@@ -44,10 +45,20 @@ command = "/path/to/python"
 args = ["-m", "pmll_memory_mcp.server"]
 ```
 
-## Verify
+## Verify MCP wiring
 
 ```bash
 codex mcp list
 ```
 
 You should see `pmllMemory` listed.
+
+## Optional: run package validation tests
+
+```bash
+export PATH=$HOME/.local/bin:$PATH
+cd flo_ai
+uv sync
+uv build
+uv run pytest -m "not (integration)"
+```
