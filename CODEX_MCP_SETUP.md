@@ -4,9 +4,22 @@ This repository includes a helper script to wire the `pmll-memory-mcp` server in
 
 ## Prerequisites
 
-- Python 3.11+ with `pmll-memory-mcp` installed.
+- Python 3.11+.
 - Codex client configured on your machine.
-- `uv >= 0.8.6` if you want to run the same validation workflow used in CI.【flo_ai/pyproject.toml sets this requirement】
+- `pmll-memory-mcp` installed in the same Python environment used for the MCP command.
+- `uv >= 0.8.6` if you want to run the same validation workflow used in CI.
+
+## Install `pmll-memory-mcp`
+
+Install from PyPI:
+
+```bash
+python -m pip install pmll-memory-mcp
+```
+
+### About `https://github.com/drqsatoshi/Pmll.git`
+
+That repository currently does **not** contain Python packaging metadata (`pyproject.toml` or `setup.py`), so `pip install git+https://github.com/drqsatoshi/Pmll.git` fails. Use the PyPI package command above unless that repo adds packaging files.
 
 ## Preferred (CLI) wiring
 

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 SERVER_NAME="pmllMemory"
+PMLL_REPO_URL="https://github.com/drqsatoshi/Pmll.git"
 METHOD="${1:-auto}" # auto | cli | file
 
 resolve_python_bin() {
@@ -30,6 +31,17 @@ resolve_python_bin() {
   fi
 
   return 1
+}
+
+ensure_pmll_installed() {
+  local python_bin="$1"
+
+  if ! "$python_bin" -c "import pmll_memory_mcp" >/dev/null 2>&1; then
+    echo "pmll_memory_mcp is not installed for: $python_bin" >&2
+    echo "Install one of the following:" >&2
+    echo "  $python_bin -m pip install pmll-memory-mcp" >&2
+    exit 1
+  fi
 }
 
 wire_with_cli() {
@@ -100,6 +112,8 @@ main() {
     echo "Resolved Python binary is not executable: $python_bin" >&2
     exit 1
   fi
+
+  ensure_pmll_installed "$python_bin"
 
   case "$METHOD" in
     auto)
